@@ -1,6 +1,6 @@
 ---
-title: "main"
-author: "Brian"
+title: "Which teams Come Alive in March?"
+author: "Brian Cooper"
 date: "2023-01-15"
 output: html_document
 ---
@@ -9,17 +9,17 @@ output: html_document
 library(ggplot2)
 library(tidyverse)
 library(readr)
-cbb <- read_csv("cbb.csv")
 library(ggpubr)
+cbb <- read_csv("cbb.csv")
 ```
 
-## Which types of teams perform best in the NCAA tournament?
+### Which types of teams perform best in the NCAA tournament?
 
 Over the course of a season, college basketball teams develop an offensive identity (faster/slower tempo, three-point/post game) but which offensive style can teams rely on when the Big Dance begins? In this analysis, I will attempt to answer this question by creating a score comparing a team's expected post season performance with their actual performance. I will cross reference this metric with three metrics representing a teams offensive identity 1. a team's three point percentage 2. offensive rebound rate and 3. tempo (expected possessions per game). Lastly I will examine the relationship between this post season performance metric and a team's overall defensive ability. 
 
 Data acquired from <https://www.kaggle.com/datasets/andrewsundberg/college-basketball-dataset?resource=download>.
 
-## Data
+## **Data**
 
 
 ```{r cleaning, echo=FALSE, message=FALSE}
@@ -67,56 +67,94 @@ We see that most teams under-perform compared to their seeding coming into the t
 ```{r, echo=FALSE, message=FALSE}
 h1 <- ggplot(tourney, aes(x=ORB)) + 
   geom_histogram()+
-  geom_histogram(color="darkblue", fill="lightblue")
+  geom_histogram(color="darkblue", fill="lightblue") + 
+  xlab("Offensive Rebounds")
 
 h2 <- ggplot(tourney, aes(x=`3P_O`)) + 
   geom_histogram()+
-  geom_histogram(color="darkblue", fill="lightblue")
+  geom_histogram(color="darkblue", fill="lightblue") + 
+  xlab("3-point %")
 
 h3 <- ggplot(tourney, aes(x=ADJ_T)) + 
   geom_histogram()+
-  geom_histogram(color="darkblue", fill="lightblue")
+  geom_histogram(color="darkblue", fill="lightblue") + 
+  xlab("Tempo")
 
 
-ggarrange(h1, h2, h3, 
+ggarrange(h1, h2, h3,
           ncol = 2, nrow = 2)
 ```
 
 
-## Results
+## **Results**
 
-First, let's look out how teams different aspects of a team's offensive identity (Offensive rebounds, 3pt%, and tempo) can impact their post season performance. 
+First, let's look out how teams different aspects of a team's offensive identity (Offensive rebounds, 3-point percentage, and tempo) can impact their post season performance. 
+
+### Offensive Rebounds
+
+First we can try and find an obvious trend in the data.
 
 ```{r, echo=FALSE, message=FALSE}
 plot1a <- ggplot(tourney, aes(ORB, SeDi)) + geom_point() + geom_smooth(se=F) + ggtitle("Offensive Rebounds vs SeDi") +
   xlab("Offensive Rebounds") + ylab("Seeding Difference")
+
 plot1a
 ```
 
+It is hard to tell if there is any real relationship with this plot so let's try visualizing the data with box plots separated in three groups, teams that met their expected exit, under-performed, and over-performed.
 
 ```{r, echo=FALSE, message=FALSE}
-
-plot2 <- ggplot(tourney, aes(`3P_O`, SeDi)) + geom_point() + geom_smooth(se=F) + ggtitle("3 pt % vs SeDi") +
-  xlab("3 pt %") + ylab("Seeding Difference")
-plot2
+plot1b <- ggplot(tourney, aes(x=ORB, y=SeDi_group, fill = SeDi_group)) + 
+  geom_boxplot(notch=TRUE) + labs(title="Offensive Rebounds by Performance",x="Offensive Rebound Rate", y = "Performance") + scale_fill_brewer(palette="Blues")
+plot1b
 ```
 
+### 3-point Percentage
 
-```{r, include=FALSE, message=FALSE}
-plot3 <- ggplot(tourney, aes(ADJ_T, SeDi)) + geom_point() + geom_smooth(se=F) + ggtitle("Tempo vs SeDi") +
+Now we can do the same visualizations for 3 point percentage.
+
+```{r, echo=FALSE, message=FALSE}
+plot2a <- ggplot(tourney, aes(`3P_O`, SeDi)) + geom_point() + geom_smooth(se=F) + ggtitle("3-pt % vs SeDi") +
+  xlab("3-pt %") + ylab("Seeding Difference")
+
+plot2b <- ggplot(tourney, aes(x=`3P_O`, y=SeDi_group, fill = SeDi_group)) + 
+  geom_boxplot(notch=TRUE) + labs(title="3-pt % by Performance",x="3-pt %", y = "Performance") + scale_fill_brewer(palette="Blues")
+
+ggarrange(plot2a, plot2b, 
+          nrow = 2)
+```
+
+### Tempo
+
+And again for offensive tempo.
+
+```{r, echo=FALSE, message=FALSE}
+plot3a <- ggplot(tourney, aes(ADJ_T, SeDi)) + geom_point() + geom_smooth(se=F) + ggtitle("Tempo vs SeDi") +
   xlab("Tempo") + ylab("Seeding Difference")
-plot3
+
+plot3b <- ggplot(tourney, aes(x=ADJ_T, y=SeDi_group, fill = SeDi_group)) + 
+  geom_boxplot(notch=TRUE) + labs(title="Offensive Tempo by Performance",x="Tempo", y = "Performance") + scale_fill_brewer(palette="Blues")
+
+ggarrange(plot3a, plot3b, 
+          nrow = 2)
 ```
 
+## **Analysis**
+
+Between the different categories of performance, we see small differences in our offensive metrics. It looks like the teams that over-performed in the tournament were teams with slightly higher offensive rebound rates and slightly lower tempo and 3-point percentage. However, given the small differences between the groups, we should perform some sort of test to see if the differences we observed are statistically significant. Thus, we will make a model to predict our SeDi variable based on a combination of offensive and defensive statistics including offensive rebound rate, offensive rebound rate allowed, 2-point percentage, 2-point percentage allowed, turnover rate, steal rate, etc.
 
 ```{r, echo=FALSE, message=FALSE}
-mod = lm(SeDi~ ., data=tourney[, -c(1,2,3, 4, 23, 21, 7,22,24,25)])
+mod = lm(SeDi~ ., data=tourney[, -c(1,2,3,4,7,21,22,23,24,25,27)])
+p_values <- summary(mod)$coefficients
 summary(mod)
 ```
 
+These results give us two very important conclusions. One is that our offensive variables are not statistically significant at the 0.05 level. Offensive rebounds, 3-point percentage, and tempo only have respective p-values of 0.91, 0.57, and 0.051. Tempo is close to being significant but any trend we observed in offensive boards or 3-point percentage is not attributable to anything more than random chance. The second thing we observe is much more thought provoking. We see that all the statistically significant variables are the defensive ones: Adjusted defensive efficiency (ADJDE), Effective field goal percentage allowed (EFG_D), 2-point percentage allowed (2P_D), and 3-point percentage allowed (3P_D). All of these variables are statistically significant and positively related to a team's likelihood to outperform their seeding in the NCAA tournament.
 
-## Conclusion
+## **Conclusion**
 
-### Future Research
+Returning to our original question, we see that the NCAA tournament highlights defensive teams. We see that defensive stats are most helpful in predicting which teams will outperform their seeding and we even see that among the offensive metrics, the advantage is given to slower teams that rebound well and do not necessarily shoot the lights out from three point range. It appears the old saying may be true, defense does in fact win championships. One intuitive explanation for the observed trends is that teams that rely on 3-pointers and high octane offensive output in general are typically a bit streakier than teams with a solid defensive base who can frustrate their opponents consistently to string together 6 wins when the pressure is greatest. Shooters go cold but a hard working and organized defense can be relied upon down the stretch. 
+
+Another potential explanation for this analysis is not so much an examination of the game-play but an indictment on the seeding system itself. There is a chance that the seeding committee may systematically underrate defensively sound teams because their offensive output does not stand out as much as better shooting teams. Both o these interpretations of the results can be true. It seems that the NCAA tournament can expose teams without the defensive acumen to compete for tough wins but it can also provide a chance for teams overlooked by the committee to grind out wins no one expected of them.
 
 
