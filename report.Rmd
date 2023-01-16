@@ -1,0 +1,104 @@
+---
+title: "main"
+author: "Brian"
+date: "2023-01-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(readr)
+cbb <- read_csv("cbb.csv")
+```
+
+## Which types of teams perform best in the NCAA tournament?
+
+Over the course of a season, college basketball teams develop an offensive identity (faster/slower tempo, three-point/post game) but which offensive style can teams rely on when the Big Dance begins? In this analysis, I will attempt to answer this question by creating a score comparing a team's expected post season performance with their actual performance. I will cross reference this metric with three metrics representing a teams offensive identity 1. a team's three point percentage 2. offensive rebound rate and 3. tempo (expected possessions per game). Lastly I will examine the relationship between this post season performance metric and a team's overall defensive ability. 
+
+Data acquired from <https://www.kaggle.com/datasets/andrewsundberg/college-basketball-dataset?resource=download>.
+
+## Data
+
+
+```{r cleaning}
+tourney <- cbb %>%
+  filter(is.na(POSTSEASON) == F)%>%
+  mutate(result_seed = POSTSEASON)
+
+tourney$result_seed[tourney$result_seed == "Champions"] <- 1
+tourney$result_seed[tourney$result_seed == "2ND"] <- 1
+tourney$result_seed[tourney$result_seed == "F4"] <- 1
+tourney$result_seed[tourney$result_seed == "E8"] <- 2
+tourney$result_seed[tourney$result_seed == "S16"] <- 4
+tourney$result_seed[tourney$result_seed == "R32"] <- 8
+tourney$result_seed[tourney$result_seed == "R64"] <- 16
+tourney$result_seed[tourney$result_seed == "R68"] <- 16
+
+tourney$result_seed = as.numeric(tourney$result_seed)
+
+tourney <- tourney%>%
+  mutate(SeDi = SEED - result_seed)%>%
+  mutate(SeDi_group = SeDi)
+
+tourney$SeDi_group[tourney$SeDi_group > 0] <- "Over"
+tourney$SeDi_group[tourney$SeDi_group == 0] <- "Even"
+tourney$SeDi_group[tourney$SeDi_group < 0] <- "Under"
+```
+
+The sample used for this study consisted of the 476 NCAA tournament teams between the years 2013 and 2019. We are interested in post season performance but we want to normalize this performance for how a team was expected to perform. If a 16 seed has a really low 3pt percentage and a 1 seed has a high 3pt percentage, we cannot necessarily attribute their final placement in the tournament to a difference in play style but rather an overall difference in quality. Instead of looking at raw placement as our dependent variable, we will examine a team's "seeding difference" (SeDi) or the difference between their seed coming into the tournament and their adjusted seed, or the seed their placement would suggest they should have had coming in. For example, making the final four puts you in the top 4 teams of the tournament (theoretically) so your adjusted seed would be a 1, and those teams that go out in the sweet 16 would be treated as 4 seeds coming into the tournament. So a 1 seed going out in the first round would have a seeding difference of **actual seed** - **adjusted seed** or 1 - 16 = -15. And a 7 seed losing in the elite 8 would get a SeDi of 7 - 2 = 5. Positive SeDi's are teams who outperform their seed coming in and negative SeDi's under-perform in the tournament.
+
+Let's look at the breakdown of positive, zero, and negative SeDi's:
+
+```{r}
+t1 <- table(tourney$SeDi_group)
+d1 <- as.data.frame(t1)
+bp<- ggplot(df, aes(x="", y=value, fill=group))+
+geom_bar(width = 1, stat = "identity")
+```
+
+
+Data acquired from <https://www.kaggle.com/datasets/andrewsundberg/college-basketball-dataset?resource=download>.
+
+
+
+
+## Results
+
+First, let's look out how teams different aspects of a team's offensive identity (Offensive rebounds, 3pt%, and tempo) can impact their post season performance. 
+
+```{r tables}
+plot1a <- ggplot(tourney, aes(ORB, SeDi)) + geom_point() + geom_smooth(se=F) + ggtitle("Offensive Rebounds vs SeDi") +
+  xlab("Offensive Rebounds") + ylab("Seeding Difference")
+plot1a
+
+plot1b <- 
+```
+
+
+```{r tables}
+
+plot2 <- ggplot(tourney, aes(`3P_O`, SeDi)) + geom_point() + geom_smooth(se=F) + ggtitle("3 pt % vs SeDi") +
+  xlab("3 pt %") + ylab("Seeding Difference")
+plot2
+```
+
+
+```{r tables}
+plot3 <- ggplot(tourney, aes(ADJ_T, SeDi)) + geom_point() + geom_smooth(se=F) + ggtitle("Tempo vs SeDi") +
+  xlab("Tempo") + ylab("Seeding Difference")
+plot3
+```
+
+
+```{r tables}
+mod = lm(SeDi~ ., data=tourney[, -c(1,2,3, 4, 23, 21, 7,22,24,25)])
+summary(mod)
+```
+
+
+## Conclusion
+
+### Future Research
+
+
